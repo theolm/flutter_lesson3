@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lesson3/repository.dart';
 import 'package:flutter_lesson3/taskrow.dart';
 
 import 'add_page.dart';
+import 'task_model.dart';
 
 void main() => runApp(MyApp());
 
@@ -28,46 +30,65 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<String> todoList = [];
 
   @override
   Widget build(BuildContext context) {
-    loadlist();
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: ListView.builder(
-        itemCount: todoList.length,
-        itemBuilder: (context, position) {
-          return TaskRow(
-              callback: (){
-                loadlist();
-              },
-              text: todoList[position]);
+      body: FutureBuilder(
+        future: getTodoList(),
+        builder: (BuildContext context, AsyncSnapshot<List<Task>> snapshot) {
+          if (snapshot.hasData) {
+            var list = snapshot.data;
+            if (list.isEmpty) {
+              return Center(
+                child: Text('Lista vazia'),
+              );
+            } else {
+              return ListView.separated(
+                itemBuilder: (context, position) {
+                  return TaskRow(
+                    deleteCallback: (Task task) async {
+                      await deleteTask(task.id);
+                      setState(() {});
+                    },
+                    checkCallback: (Task task, bool value) async {
+                      await changeTaskStatus(task.id, value);
+                      setState(() {});
+                    },
+                    task: list[position],
+                  );
+                },
+                separatorBuilder: (context, pos) {
+                  return Container(
+                    height: 1,
+                    color: Colors.grey.shade300,
+                  );
+                },
+                itemCount: list.length,
+              );
+            }
+          } else {
+            return Container();
+          }
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          var res = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                    settings: RouteSettings(name: 'AddPage'),
-                    builder: (context) => AddPage()),
-              ) ??
-              false;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              settings: RouteSettings(name: 'AddPage'),
+              builder: (context) => AddPage(),
+            ),
+          );
 
-          print(res);
+          setState(() {});
         },
         child: Icon(Icons.add),
       ),
     );
-  }
-
-  void loadlist() async {
-//    var prefs = await SharedPreferences.getInstance();
-//    setState(() {
-//      todoList = prefs.getStringList('tasks') ?? [];
-//    });
   }
 }
